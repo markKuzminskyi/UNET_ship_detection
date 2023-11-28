@@ -14,4 +14,3 @@ img_size: [768, 768]
 test_path: "./test_v2"
 train_path: "./train_v2"
 masks_path: "./train_ship_segmentations_v2.csv"
-sub_path: "./sample_submission_v2.csv"
