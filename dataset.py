@@ -5,9 +5,9 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from PIL import Image
-
 from sklearn.model_selection import train_test_split
 import yaml
+
 
 # Downloading config file
 config_path = "config.yml"
@@ -15,12 +15,8 @@ with open(config_path, "r") as config_file:
     config = yaml.safe_load(config_file)
 
 
+# Function that decode masks rle
 def rle_decode(mask_rle, shape=(768, 768)):
-    '''
-    mask_rle: run-length as string formated (start length)
-    shape: (height,width) of array to return
-    Returns numpy array, 1 - mask, 0 - background
-    '''
     s = mask_rle.split()
     starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
     ends = starts + lengths
@@ -30,24 +26,12 @@ def rle_decode(mask_rle, shape=(768, 768)):
     return im.reshape(shape).T
 
 
-def rle_encode(im):
-    '''
-    im: numpy array, 1 - mask, 0 - background
-    Returns run length as string formated
-    '''
-    pixels = im.T.flatten()
-    pixels = np.concatenate([[0], pixels, [0]])
-    runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
-    runs[1::2] -= runs[::2]
-    runs[::2] -= 1
-    return ' '.join(str(x) for x in runs)
-
-
 def get_mask_encodings(masks_data, fnames):
     a = masks_data[masks_data['ImageId'].isin(fnames)]
     return a.groupby('ImageId')['EncodedPixels'].apply(lambda x: x.tolist()).to_dict()
 
 
+# Creating our image dataset class
 class ImgDataset(Dataset):
 
     def __init__(self,
@@ -67,7 +51,7 @@ class ImgDataset(Dataset):
         self.mask_transform = mask_transform
 
     def __getitem__(self, i):
-        seed = np.random.randint(2)
+        seed = np.random.randint(config["random_state"])
 
         fname = self.img_fnames[i]
         fpath = os.path.join(self.img_dpath, fname)
@@ -76,6 +60,7 @@ class ImgDataset(Dataset):
             np.random.seed(seed)
             img = self.img_transform(img)
 
+        # Create mask of an image
         mask = np.zeros(self.mask_size, dtype=np.uint8)
         if self.mask_encodings[fname][0] == self.mask_encodings[fname][0]:  # NaN doesn't equal to itself
             for encoding in self.mask_encodings[fname]:
@@ -93,7 +78,9 @@ class ImgDataset(Dataset):
         return len(self.img_fnames)
 
 
+# This function returns train and test datasets we work with
 def get_data():
+    #
     masks_data = pd.read_csv(config["masks_path"])
     masks_data['EncodedPixels_flag'] = masks_data['EncodedPixels'].map(lambda v: 1 if isinstance(v, str) else 0)
 
