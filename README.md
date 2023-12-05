@@ -5,7 +5,7 @@ I will add new files over time.
 Description of every file in this project:
 1. config.yml - file that have settings for training and also paths for datasets;
 2. requirements.txt - file that contains requirements for this project;
-3. dataset_preparation.py - file that have functions to create prepared datasets for neural network; (Later i will add more functions to this file and rename it to utils)
-4. nn_model.py - file with UNET model;
+3. dataset.py - file that have functions to create prepared datasets for neural network; 
+4. nn_model.py - file with UNET model architecture;
 5. training.py - this file contain all training and testing loops etc.;
 6. inference.py - blank file, but in this file you can use trained model on your own photos.
