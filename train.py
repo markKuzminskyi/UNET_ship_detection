@@ -6,7 +6,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import yaml
 
-import dataset as dp
+import utils
+import dataset
 from nn_model import UNET
 
 # Downloading config file
@@ -17,7 +18,7 @@ with open(config_path, "r") as config_file:
 
 DEVICE = conf["device"] if torch.cuda.is_available() else "cpu"
 
-train_ds, test_ds = dp.get_data()
+train_ds, test_ds = dataset.get_data()
 
 train_dl = DataLoader(train_ds, batch_size=conf["batch_size"], shuffle=True, pin_memory=torch.cuda.is_available(),
                       num_workers=conf["num_workers"])
@@ -25,31 +26,8 @@ val_dl = DataLoader(test_ds, batch_size=conf["batch_size"], shuffle=False, pin_m
                     num_workers=conf["num_workers"])
 
 
-# Function that calculates accuracy
-def check_accuracy(loader, model, device="cpu"):
-    num_correct = 0
-    num_pixels = 0
-    dice_score = 0
-    model.eval()
-
-    with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device)
-            y = y.to(device)
-            preds = torch.sigmoid(model(x))
-            preds = (preds > 0.5).float()
-            num_correct += (preds == y).sum()
-            num_pixels += torch.numel(preds)
-            dice_score += (2 * (preds * y).sum()) / ((preds + y).sum() + 1e-8)
-
-    print(
-        f"Got {num_correct}/{num_pixels} with acc {num_correct/num_pixels*100:.2f}"
-    )
-    print(f"Dice score: {dice_score/len(loader)}")
-    model.train()
-
-
-def training(loader, model, optimizer, loss_fn, scaler):
+# Training loop, obviously
+def train_loop(loader, model, optimizer, loss_fn):
     pbar = tqdm(loader)
 
     for batch_idx, (data, targets) in enumerate(pbar):
@@ -71,11 +49,23 @@ def training(loader, model, optimizer, loss_fn, scaler):
 
 def main():
     model = UNET(in_channels=3, out_channels=1).to(device=DEVICE)
+    optimizer = optim.Adam(model.parameters(), lr=conf["learning_rate"])
     loss_fn = nn.BCEWithLogitsLoss()
-    optimizator = optim.Adam(model.parameters(), lr=conf["learning_rate"])
+    loader = train_dl
 
     for epoch in range(conf["num_epochs"]):
-        pass
+        train_loop(loader, model, optimizer, loss_fn)
+
+        # Save model
+        checkpoint = {
+            "state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict()
+        }
+
+        utils.save_checkpoint(checkpoint)
+
+        # Check accuracy
+        utils.check_accuracy(val_dl, model, device=DEVICE)
 
 
 if __name__ == "__main__":

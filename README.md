@@ -9,3 +9,4 @@ Description of every file in this project:
 4. nn_model.py - file with UNET model architecture;
 5. training.py - this file contain all training and testing loops etc.;
 6. inference.py - blank file, but in this file you can use trained model on your own photos.
+7. utils.py - file that contains small functions, obviously;
